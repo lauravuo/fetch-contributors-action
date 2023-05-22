@@ -6,6 +6,29 @@ require('./sourcemap-register.js');/******/ (() => { // webpackBootstrap
 
 "use strict";
 
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -15,19 +38,18 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-const core_1 = __importDefault(__nccwpck_require__(2186));
+const core = __importStar(__nccwpck_require__(2186));
 const fetcher = (
 // eslint-disable-next-line  @typescript-eslint/no-explicit-any
 octokit) => {
     const errorHandler = (err) => {
-        core_1.default.error(err);
+        core.error(err);
+        core.setFailed(err.message);
         process.exit(1);
     };
     const fetchOrgRepos = (org) => __awaiter(void 0, void 0, void 0, function* () {
+        core.debug(`Fetch repositories for organisation ${org}`);
         // Fetch organisation repositories
         let page = 1;
         const repos = [];
@@ -52,11 +74,13 @@ octokit) => {
         return repos;
     });
     const fetchOrgContributors = (org) => __awaiter(void 0, void 0, void 0, function* () {
+        core.debug(`Fetch contributors for organisation ${org}`);
         const contributors = {};
         const repos = yield fetchOrgRepos(org);
         let commitsCount = 0;
         const reposWithContributors = yield Promise.all(repos.map((item) => __awaiter(void 0, void 0, void 0, function* () {
             try {
+                core.debug(`Fetch contributors for repository ${item.name}`);
                 // Get repository stats
                 const contributorsResponse = yield octokit.rest.repos.getContributorsStats({
                     owner: item.owner.login,
@@ -64,9 +88,13 @@ octokit) => {
                 });
                 let repoCommitsCount = 0;
                 // For each contributor, fetch name
-                const repoContributors = contributorsResponse.data;
+                const repoContributors = contributorsResponse.data.length > 0
+                    ? contributorsResponse.data
+                    : [];
+                core.debug(`Found ${repoContributors.length} contributors for repository ${item.name}`);
                 for (let i = 0; i < repoContributors.length; i++) {
                     const contributor = repoContributors[i];
+                    core.debug(`Handling contributor ${contributor.author.login} for repository ${item.name}`);
                     commitsCount += contributor.total;
                     repoCommitsCount += contributor.total;
                     if (contributors[contributor.author.login]) {
@@ -74,6 +102,7 @@ octokit) => {
                             contributor.total;
                         continue;
                     }
+                    core.debug(`Fetch user ${contributor.author.login}`);
                     const usersResponse = yield octokit.rest.users.getByUsername({
                         username: contributor.author.login
                     });
@@ -157,22 +186,19 @@ const fetch_1 = __importDefault(__nccwpck_require__(2387));
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            const authToken = core.getInput('token');
-            if (!authToken) {
-                throw new Error('Token is required');
+            const authToken = core.getInput('token', { required: true });
+            const organisation = core.getInput('organisation') ||
+                process.env.GITHUB_REPOSITORY.split('/')[0];
+            if (!organisation) {
+                throw new Error('Organisation is required');
             }
-            if (!process.env.GITHUB_REPOSITORY) {
-                throw new Error('Repository is required');
-            }
-            const [repoOwner] = process.env.GITHUB_REPOSITORY.split('/');
-            core.debug(`Fetch contributors for organisation ${repoOwner}`);
+            core.debug(`Run action for organisation ${organisation}`);
             const octokit = (0, github_1.getOctokit)(authToken);
             const dataFetcher = (0, fetch_1.default)(octokit);
-            const data = yield dataFetcher.fetchOrgContributors(repoOwner);
+            const data = yield dataFetcher.fetchOrgContributors(organisation);
             const markdown = `
+# ${organisation}
 
-# ${repoOwner}
-  
 ## All contributors
 
 | avatar | username | name | count | % of all commits |
@@ -184,14 +210,14 @@ ${data.contributors
 ## Repositories
 
 ${data.repos
-                .map(item => `### [${item.name}](https://github.com/${repoOwner}/${item.name}) ([${item.commitsCount} commits](https://github.com/${repoOwner}/${item.name}/graphs/contributors))\n
+                .map(item => `### [${item.name}](https://github.com/${organisation}/${item.name}) ([${item.commitsCount} commits](https://github.com/${organisation}/${item.name}/graphs/contributors))\n
 ${item.contributors
                 .slice(0, 15)
-                .map(user => `* [${user.author.login}](https://github.com/${user.author.login}) (${Math.round((user.total / item.commitsCount) * 100)} %)`)
+                .map(user => `    * [${user.author.login}](https://github.com/${user.author.login}) (${Math.round((user.total / item.commitsCount) * 100)} %)`)
                 .join('\n')}
-`)
+    `)
                 .join('\n')}
-`;
+    `;
             const targetPath = core.getInput('targetPath');
             fs_1.default.writeFileSync(targetPath, markdown);
             const commitFiles = core.getInput('commitTarget') === 'true';

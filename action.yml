@@ -5,6 +5,9 @@ inputs:
   token:
     required: true
     description: 'GitHub token'
+  organisation:
+    required: false
+    description: 'Target organisation'
   targetPath:
     required: false
     description: 'Target markdown file path'
