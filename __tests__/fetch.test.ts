@@ -1,4 +1,4 @@
-import { expect, test } from '@jest/globals'
+import {expect, test} from '@jest/globals'
 
 import fetcher from '../src/fetch'
 
@@ -195,23 +195,25 @@ const usersResponse = `
 const octoKitMock = {
   rest: {
     repos: {
-      listForOrg: async ({ page }: { page: number }) => ({ data: page === 1 ? JSON.parse(reposResponse) : [] }),
-      getContributorsStats: async () => ({ data: JSON.parse(statsResponse) }),
+      listForOrg: async ({page}: {page: number}) => ({
+        data: page === 1 ? JSON.parse(reposResponse) : []
+      }),
+      getContributorsStats: async () => ({data: JSON.parse(statsResponse)})
     },
     users: {
-      getByUsername: async () => ({ data: JSON.parse(usersResponse) })
+      getByUsername: async () => ({data: JSON.parse(usersResponse)})
     }
   }
 }
 
 test('fetch org contributors', async () => {
   const dataFetcher = fetcher(octoKitMock)
-  const res = await dataFetcher.fetchOrgContributors("octocat")
+  const res = await dataFetcher.fetchOrgContributors('octocat')
   expect(res.repos).toHaveLength(1)
-  expect(res.repos[0].name).toEqual("Hello-World")
-  expect(res.repos[0].contributors[0].author.login).toEqual("octocat")
+  expect(res.repos[0].name).toEqual('Hello-World')
+  expect(res.repos[0].contributors[0].author.login).toEqual('octocat')
   expect(res.repos[0].commitsCount).toEqual(135)
-  expect(res.contributors[0].login).toEqual("octocat")
-  expect(res.contributors[0].name).toEqual("monalisa octocat")
+  expect(res.contributors[0].login).toEqual('octocat')
+  expect(res.contributors[0].name).toEqual('monalisa octocat')
   expect(res.commitsCount).toEqual(135)
 })
