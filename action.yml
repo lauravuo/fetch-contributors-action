@@ -2,6 +2,9 @@ name: 'Fetch organisation contributors'
 description: 'Exports organisation contributors to markdown'
 author: 'lauravuo'
 inputs:
+  token:
+    required: true
+    description: 'GitHub token'
   targetPath:
     required: false
     description: 'Target markdown file path'

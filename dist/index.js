@@ -20,8 +20,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core_1 = __importDefault(__nccwpck_require__(2186));
-exports["default"] = (octokit) => {
-    //const octokit = github.getOctokit(authToken);
+const fetcher = (
+// eslint-disable-next-line  @typescript-eslint/no-explicit-any
+octokit) => {
     const errorHandler = (err) => {
         core_1.default.error(err);
         process.exit(1);
@@ -31,16 +32,21 @@ exports["default"] = (octokit) => {
         let page = 1;
         const repos = [];
         while (page > 0) {
-            const reposResponse = yield octokit.rest.repos.listForOrg({
-                org,
-                page
-            }).catch(errorHandler);
-            if (!reposResponse.data.length) {
-                page = 0;
+            try {
+                const reposResponse = yield octokit.rest.repos.listForOrg({
+                    org,
+                    page
+                });
+                if (!reposResponse.data.length) {
+                    page = 0;
+                }
+                else {
+                    repos.push(...reposResponse.data);
+                    page++;
+                }
             }
-            else {
-                repos.push(...reposResponse.data);
-                page++;
+            catch (err) {
+                errorHandler(err);
             }
         }
         return repos;
@@ -50,47 +56,54 @@ exports["default"] = (octokit) => {
         const repos = yield fetchOrgRepos(org);
         let commitsCount = 0;
         const reposWithContributors = yield Promise.all(repos.map((item) => __awaiter(void 0, void 0, void 0, function* () {
-            // Get repository stats
-            const contributorsResponse = yield octokit.rest.repos.getContributorsStats({
-                owner: item.owner.login,
-                repo: item.name,
-            }).catch(errorHandler);
-            let repoCommitsCount = 0;
-            // For each contributor, fetch name 
-            const repoContributors = contributorsResponse.data;
-            for (let i = 0; i < repoContributors.length; i++) {
-                const contributor = repoContributors[i];
-                commitsCount += contributor.total;
-                repoCommitsCount += contributor.total;
-                if (contributors[contributor.author.login]) {
-                    contributors[contributor.author.login].commitsCount += contributor.total;
-                    continue;
+            try {
+                // Get repository stats
+                const contributorsResponse = yield octokit.rest.repos.getContributorsStats({
+                    owner: item.owner.login,
+                    repo: item.name
+                });
+                let repoCommitsCount = 0;
+                // For each contributor, fetch name
+                const repoContributors = contributorsResponse.data;
+                for (let i = 0; i < repoContributors.length; i++) {
+                    const contributor = repoContributors[i];
+                    commitsCount += contributor.total;
+                    repoCommitsCount += contributor.total;
+                    if (contributors[contributor.author.login]) {
+                        contributors[contributor.author.login].commitsCount +=
+                            contributor.total;
+                        continue;
+                    }
+                    const usersResponse = yield octokit.rest.users.getByUsername({
+                        username: contributor.author.login
+                    });
+                    const updatedContributor = Object.assign(Object.assign({}, contributor), { author: Object.assign(Object.assign({}, contributor.author), usersResponse.data) });
+                    contributors[contributor.author.login] = Object.assign(Object.assign({}, updatedContributor.author), { commitsCount: contributor.total });
+                    repoContributors[i] = updatedContributor;
+                    return Object.assign(Object.assign({}, item), { contributors: contributorsResponse.data, commitsCount: repoCommitsCount });
                 }
-                const usersResponse = yield octokit.rest.users.getByUsername({
-                    username: contributor.author.login
-                }).catch(errorHandler);
-                const updatedContributor = Object.assign(Object.assign({}, contributor), { author: Object.assign(Object.assign({}, contributor.author), usersResponse.data) });
-                contributors[contributor.author.login] = Object.assign(Object.assign({}, updatedContributor.author), { commitsCount: contributor.total });
-                repoContributors[i] = updatedContributor;
-                return Object.assign(Object.assign({}, item), { contributors: contributorsResponse.data, commitsCount: repoCommitsCount });
+                return Object.assign(Object.assign({}, item), { 
+                    // Sort repository contributors by commit count
+                    contributors: repoContributors.sort((a, b) => a.total > b.total ? -1 : 1) });
             }
-            return Object.assign(Object.assign({}, item), { 
-                // Sort repository contributors by commit count
-                contributors: repoContributors.sort((a, b) => a.total > b.total ? -1 : 1) });
+            catch (err) {
+                errorHandler(err);
+            }
         })));
         return {
             // Sort organisation contributors by commit count
             contributors: Object.keys(contributors)
                 .map(key => contributors[key])
-                .sort((a, b) => a.commitsCount > b.commitsCount ? -1 : 1),
+                .sort((a, b) => (a.commitsCount > b.commitsCount ? -1 : 1)),
             repos: reposWithContributors,
             commitsCount
         };
     });
     return {
-        fetchOrgContributors,
+        fetchOrgContributors
     };
 };
+exports["default"] = fetcher;
 
 
 /***/ }),
@@ -137,23 +150,23 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(2186));
-const github_1 = __importDefault(__nccwpck_require__(5438));
+const github_1 = __nccwpck_require__(5438);
 const fs_1 = __importDefault(__nccwpck_require__(7147));
 const child_process_1 = __nccwpck_require__(2081);
 const fetch_1 = __importDefault(__nccwpck_require__(2387));
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            if (!process.env.GITHUB_TOKEN) {
+            const authToken = core.getInput('token');
+            if (!authToken) {
                 throw new Error('Token is required');
             }
             if (!process.env.GITHUB_REPOSITORY) {
                 throw new Error('Repository is required');
             }
-            const authToken = process.env.GITHUB_TOKEN;
             const [repoOwner] = process.env.GITHUB_REPOSITORY.split('/');
             core.debug(`Fetch contributors for organisation ${repoOwner}`);
-            const octokit = github_1.default.getOctokit(authToken);
+            const octokit = (0, github_1.getOctokit)(authToken);
             const dataFetcher = (0, fetch_1.default)(octokit);
             const data = yield dataFetcher.fetchOrgContributors(repoOwner);
             const markdown = `
@@ -164,17 +177,24 @@ function run() {
 
 | avatar | username | name | count | % of all commits |
 |--------|----------|------|---------|---|
-${data.contributors.map((item) => `| ![](https://avatars.githubusercontent.com/u/${item.id}?s=35&v=4) | [${item.login}](https://github.com/${item.login}) | ${item.name} | ${item.commitsCount} | ${Math.round(item.commitsCount / data.commitsCount * 100)}`).join('\n')}
+${data.contributors
+                .map(item => `| ![](https://avatars.githubusercontent.com/u/${item.id}?s=35&v=4) | [${item.login}](https://github.com/${item.login}) | ${item.name} | ${item.commitsCount} | ${Math.round((item.commitsCount / data.commitsCount) * 100)}`)
+                .join('\n')}
 
 ## Repositories
 
-${data.repos.map((item) => `### [${item.name}](https://github.com/${repoOwner}/${item.name}) ([${item.commitsCount} commits](https://github.com/${repoOwner}/${item.name}/graphs/contributors))\n
-${item.contributors.slice(0, 15).map(user => `* [${user.author.login}](https://github.com/${user.author.login}) (${Math.round(user.total / item.commitsCount * 100)} %)`).join('\n')}
-`).join('\n')}
+${data.repos
+                .map(item => `### [${item.name}](https://github.com/${repoOwner}/${item.name}) ([${item.commitsCount} commits](https://github.com/${repoOwner}/${item.name}/graphs/contributors))\n
+${item.contributors
+                .slice(0, 15)
+                .map(user => `* [${user.author.login}](https://github.com/${user.author.login}) (${Math.round((user.total / item.commitsCount) * 100)} %)`)
+                .join('\n')}
+`)
+                .join('\n')}
 `;
             const targetPath = core.getInput('targetPath');
             fs_1.default.writeFileSync(targetPath, markdown);
-            const commitFiles = core.getInput('commitTargetFiles') === 'true';
+            const commitFiles = core.getInput('commitTarget') === 'true';
             if (commitFiles) {
                 core.info('git commit');
                 (0, child_process_1.exec)('git config --global user.email "contributor-bot"');
