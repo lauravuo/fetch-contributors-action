@@ -1,7 +1,7 @@
 import * as core from '@actions/core'
-import { getOctokit } from '@actions/github'
+import {getOctokit} from '@actions/github'
 import fs from 'fs'
-import { exec } from 'child_process'
+import {exec} from 'child_process'
 
 import fetcher from './fetch'
 
@@ -32,39 +32,44 @@ async function run(): Promise<void> {
 | avatar | username | name | count | % of all commits |
 |--------|----------|------|---------|---|
 ${data.contributors
-        .map(
-          item =>
-            `| ![](https://avatars.githubusercontent.com/u/${item.id}?s=35&v=4) | [${item.login
-            }](https://github.com/${item.login}) | ${item.name} | ${item.commitsCount
-            } | ${Math.round((item.commitsCount / data.commitsCount) * 100)}`
-        )
-        .join('\n')}
+  .map(
+    item =>
+      `| ![](https://avatars.githubusercontent.com/u/${item.id}?s=35&v=4) | [${
+        item.login
+      }](https://github.com/${item.login}) | ${item.name} | ${
+        item.commitsCount
+      } | ${Math.round((item.commitsCount / data.commitsCount) * 100)}`
+  )
+  .join('\n')}
 
 ## Repositories
 
 ${data.repos
-        .map(
-          item =>
-            `### [${item.name}](https://github.com/${repoOwner}/${item.name}) ([${item.commitsCount
-            } commits](https://github.com/${repoOwner}/${item.name
-            }/graphs/contributors))\n
+  .map(
+    item =>
+      `### [${item.name}](https://github.com/${repoOwner}/${item.name}) ([${
+        item.commitsCount
+      } commits](https://github.com/${repoOwner}/${
+        item.name
+      }/graphs/contributors))\n
 ${item.contributors
-              .slice(0, 15)
-              .map(
-                user =>
-                  `* [${user.author.login}](https://github.com/${user.author.login
-                  }) (${Math.round((user.total / item.commitsCount) * 100)} %)`
-              )
-              .join('\n')}
+  .slice(0, 15)
+  .map(
+    user =>
+      `* [${user.author.login}](https://github.com/${
+        user.author.login
+      }) (${Math.round((user.total / item.commitsCount) * 100)} %)`
+  )
+  .join('\n')}
 `
-        )
-        .join('\n')}
+  )
+  .join('\n')}
 `
 
     const targetPath: string = core.getInput('targetPath')
     fs.writeFileSync(targetPath, markdown)
 
-    const commitFiles: boolean = core.getInput('commitTargetFiles') === 'true'
+    const commitFiles: boolean = core.getInput('commitTarget') === 'true'
     if (commitFiles) {
       core.info('git commit')
       exec('git config --global user.email "contributor-bot"')

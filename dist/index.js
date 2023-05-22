@@ -150,23 +150,23 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(2186));
-const github_1 = __importDefault(__nccwpck_require__(5438));
+const github_1 = __nccwpck_require__(5438);
 const fs_1 = __importDefault(__nccwpck_require__(7147));
 const child_process_1 = __nccwpck_require__(2081);
 const fetch_1 = __importDefault(__nccwpck_require__(2387));
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            if (!process.env.GITHUB_TOKEN) {
+            const authToken = core.getInput('token');
+            if (!authToken) {
                 throw new Error('Token is required');
             }
             if (!process.env.GITHUB_REPOSITORY) {
                 throw new Error('Repository is required');
             }
-            const authToken = process.env.GITHUB_TOKEN;
             const [repoOwner] = process.env.GITHUB_REPOSITORY.split('/');
             core.debug(`Fetch contributors for organisation ${repoOwner}`);
-            const octokit = github_1.default.getOctokit(authToken);
+            const octokit = (0, github_1.getOctokit)(authToken);
             const dataFetcher = (0, fetch_1.default)(octokit);
             const data = yield dataFetcher.fetchOrgContributors(repoOwner);
             const markdown = `
@@ -194,7 +194,7 @@ ${item.contributors
 `;
             const targetPath = core.getInput('targetPath');
             fs_1.default.writeFileSync(targetPath, markdown);
-            const commitFiles = core.getInput('commitTargetFiles') === 'true';
+            const commitFiles = core.getInput('commitTarget') === 'true';
             if (commitFiles) {
                 core.info('git commit');
                 (0, child_process_1.exec)('git config --global user.email "contributor-bot"');
