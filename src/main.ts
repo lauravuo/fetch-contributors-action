@@ -1,5 +1,5 @@
 import * as core from '@actions/core'
-import github from '@actions/github'
+import { getOctokit } from '@actions/github'
 import fs from 'fs'
 import {exec} from 'child_process'
 
@@ -19,7 +19,7 @@ async function run(): Promise<void> {
     const [repoOwner] = process.env.GITHUB_REPOSITORY.split('/')
     core.debug(`Fetch contributors for organisation ${repoOwner}`)
 
-    const octokit = github.getOctokit(authToken)
+    const octokit = getOctokit(authToken)
     const dataFetcher = fetcher(octokit)
     const data = await dataFetcher.fetchOrgContributors(repoOwner)
 
