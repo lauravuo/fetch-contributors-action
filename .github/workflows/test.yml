@@ -25,4 +25,4 @@ jobs:
           organisation: kaupunginnaiset
           token: ${{ secrets.GITHUB_TOKEN }}
       - run: |
-          cat ./contributors.md
+          cat ./contributors.md | grep "lauravuo"

@@ -75,10 +75,14 @@ const fetcher = (
       if (allUsers[contributor.author.login]) {
         core.debug(`Contributor ${contributor.author.login} already added`)
         allUsers[contributor.author.login].commitsCount += contributor.total
+        output.push({
+          ...contributor,
+          author: allUsers[contributor.author.login]
+        })
         continue
       }
-      core.debug(`Fetch user ${contributor.author.login}`)
 
+      core.debug(`Fetch user ${contributor.author.login}`)
       const usersResponse = await octokit.rest.users.getByUsername({
         username: contributor.author.login
       })

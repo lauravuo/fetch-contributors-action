@@ -82,6 +82,7 @@ octokit) => {
             if (allUsers[contributor.author.login]) {
                 core.debug(`Contributor ${contributor.author.login} already added`);
                 allUsers[contributor.author.login].commitsCount += contributor.total;
+                output.push(Object.assign(Object.assign({}, contributor), { author: allUsers[contributor.author.login] }));
                 continue;
             }
             core.debug(`Fetch user ${contributor.author.login}`);
