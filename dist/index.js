@@ -195,7 +195,8 @@ function run() {
         try {
             const authToken = core.getInput('token', { required: true });
             const organisation = core.getInput('organisation') ||
-                process.env.GITHUB_REPOSITORY && process.env.GITHUB_REPOSITORY.split('/')[0];
+                (process.env.GITHUB_REPOSITORY &&
+                    process.env.GITHUB_REPOSITORY.split('/')[0]);
             if (!organisation) {
                 throw new Error('Organisation is required');
             }
@@ -208,10 +209,10 @@ function run() {
 
 ## All contributors
 
-| avatar | username | name | count | % of all commits |
+| avatar | username | name | count | of all commits |
 |--------|----------|------|---------|---|
 ${data.contributors
-                .map(item => `| ![](https://avatars.githubusercontent.com/u/${item.id}?s=35&v=4) | [${item.login}](https://github.com/${item.login}) | ${item.name} | ${item.commitsCount} | ${Math.round((item.commitsCount / data.commitsCount) * 100)}`)
+                .map(item => `| ![](https://avatars.githubusercontent.com/u/${item.id}?s=35&v=4) | [${item.login}](https://github.com/${item.login}) | ${item.name} | ${item.commitsCount} | ${Math.round((item.commitsCount / data.commitsCount) * 100)}%`)
                 .join('\n')}
 
 ## Repositories
@@ -220,7 +221,7 @@ ${data.repos
                 .map(item => `### [${item.name}](https://github.com/${organisation}/${item.name}) ([${item.commitsCount} commits](https://github.com/${organisation}/${item.name}/graphs/contributors))\n
 ${item.contributors
                 .slice(0, 15)
-                .map(user => `    * [${user.author.login}](https://github.com/${user.author.login}) (${Math.round((user.total / item.commitsCount) * 100)} %)`)
+                .map(user => `* [${user.author.login}](https://github.com/${user.author.login}) (${Math.round((user.total / item.commitsCount) * 100)} %)`)
                 .join('\n')}
     `)
                 .join('\n')}

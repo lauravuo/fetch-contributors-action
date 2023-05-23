@@ -30,7 +30,7 @@ async function run(): Promise<void> {
 
 ## All contributors
 
-| avatar | username | name | count | % of all commits |
+| avatar | username | name | count | of all commits |
 |--------|----------|------|---------|---|
 ${data.contributors
   .map(
@@ -39,7 +39,7 @@ ${data.contributors
         item.login
       }](https://github.com/${item.login}) | ${item.name} | ${
         item.commitsCount
-      } | ${Math.round((item.commitsCount / data.commitsCount) * 100)}`
+      } | ${Math.round((item.commitsCount / data.commitsCount) * 100)}%`
   )
   .join('\n')}
 
@@ -57,7 +57,7 @@ ${item.contributors
   .slice(0, 15)
   .map(
     user =>
-      `    * [${user.author.login}](https://github.com/${
+      `* [${user.author.login}](https://github.com/${
         user.author.login
       }) (${Math.round((user.total / item.commitsCount) * 100)} %)`
   )
