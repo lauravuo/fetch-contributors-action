@@ -101,6 +101,9 @@ const fetcher = (
             commitsCount += contributor.total
             repoCommitsCount += contributor.total
             if (contributors[contributor.author.login]) {
+              core.debug(
+                `Contributor ${contributor.author.login} already added`
+              )
               contributors[contributor.author.login].commitsCount +=
                 contributor.total
               continue
