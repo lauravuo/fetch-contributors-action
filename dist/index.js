@@ -132,7 +132,7 @@ octokit) => {
             contributors: Object.keys(contributors)
                 .map(key => contributors[key])
                 .sort((a, b) => (a.commitsCount > b.commitsCount ? -1 : 1)),
-            repos: reposWithContributors.sort((a, b) => (a.commitsCount > b.commitsCount ? -1 : 1)),
+            repos: reposWithContributors.sort((a, b) => a.commitsCount > b.commitsCount ? -1 : 1),
             commitsCount
         };
     });
