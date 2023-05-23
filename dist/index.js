@@ -73,6 +73,31 @@ octokit) => {
         }
         return repos;
     });
+    const fillUserData = (input, allUsers) => __awaiter(void 0, void 0, void 0, function* () {
+        let contributorsTotal = 0;
+        const output = [];
+        for (const contributor of input) {
+            core.debug(`Filling contributor ${contributor.author.login} data`);
+            contributorsTotal += contributor.total;
+            if (allUsers[contributor.author.login]) {
+                core.debug(`Contributor ${contributor.author.login} already added`);
+                allUsers[contributor.author.login].commitsCount += contributor.total;
+                continue;
+            }
+            core.debug(`Fetch user ${contributor.author.login}`);
+            const usersResponse = yield octokit.rest.users.getByUsername({
+                username: contributor.author.login
+            });
+            const updatedContributor = Object.assign(Object.assign({}, contributor), { author: Object.assign(Object.assign({}, contributor.author), usersResponse.data) });
+            allUsers[contributor.author.login] = Object.assign(Object.assign({}, updatedContributor.author), { commitsCount: contributor.total });
+            output.push(updatedContributor);
+        }
+        return {
+            repoContributors: output.sort((a, b) => (a.total > b.total ? -1 : 1)),
+            repoTotal: contributorsTotal,
+            allUsers
+        };
+    });
     const fetchOrgContributors = (org) => __awaiter(void 0, void 0, void 0, function* () {
         core.debug(`Fetch contributors for organisation ${org}`);
         const contributors = {};
@@ -86,35 +111,16 @@ octokit) => {
                     owner: item.owner.login,
                     repo: item.name
                 });
-                let repoCommitsCount = 0;
                 // For each contributor, fetch name
                 const repoContributors = contributorsResponse.data.length > 0
                     ? contributorsResponse.data
                     : [];
                 core.debug(`Found ${repoContributors.length} contributors for repository ${item.name}`);
-                for (let i = 0; i < repoContributors.length; i++) {
-                    const contributor = repoContributors[i];
-                    core.debug(`Handling contributor ${contributor.author.login} for repository ${item.name}`);
-                    commitsCount += contributor.total;
-                    repoCommitsCount += contributor.total;
-                    if (contributors[contributor.author.login]) {
-                        core.debug(`Contributor ${contributor.author.login} already added`);
-                        contributors[contributor.author.login].commitsCount +=
-                            contributor.total;
-                        continue;
-                    }
-                    core.debug(`Fetch user ${contributor.author.login}`);
-                    const usersResponse = yield octokit.rest.users.getByUsername({
-                        username: contributor.author.login
-                    });
-                    const updatedContributor = Object.assign(Object.assign({}, contributor), { author: Object.assign(Object.assign({}, contributor.author), usersResponse.data) });
-                    contributors[contributor.author.login] = Object.assign(Object.assign({}, updatedContributor.author), { commitsCount: contributor.total });
-                    repoContributors[i] = updatedContributor;
-                    return Object.assign(Object.assign({}, item), { contributors: contributorsResponse.data, commitsCount: repoCommitsCount });
-                }
+                const repoData = yield fillUserData(repoContributors, contributors);
+                commitsCount += repoData.repoTotal;
                 return Object.assign(Object.assign({}, item), { 
                     // Sort repository contributors by commit count
-                    contributors: repoContributors.sort((a, b) => a.total > b.total ? -1 : 1) });
+                    contributors: repoData.repoContributors, commitsCount: repoData.repoTotal });
             }
             catch (err) {
                 errorHandler(err);
@@ -189,7 +195,7 @@ function run() {
         try {
             const authToken = core.getInput('token', { required: true });
             const organisation = core.getInput('organisation') ||
-                process.env.GITHUB_REPOSITORY.split('/')[0];
+                process.env.GITHUB_REPOSITORY && process.env.GITHUB_REPOSITORY.split('/')[0];
             if (!organisation) {
                 throw new Error('Organisation is required');
             }

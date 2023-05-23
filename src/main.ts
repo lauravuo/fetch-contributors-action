@@ -10,7 +10,8 @@ async function run(): Promise<void> {
     const authToken = core.getInput('token', {required: true})
     const organisation =
       core.getInput('organisation') ||
-      process.env.GITHUB_REPOSITORY!.split('/')[0]
+      (process.env.GITHUB_REPOSITORY &&
+        process.env.GITHUB_REPOSITORY.split('/')[0])
 
     if (!organisation) {
       throw new Error('Organisation is required')

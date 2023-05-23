@@ -59,6 +59,49 @@ const fetcher = (
     return repos
   }
 
+  const fillUserData = async (
+    input: Contributor[],
+    allUsers: {[key: string]: OrganisationUser}
+  ): Promise<{
+    repoContributors: Contributor[]
+    repoTotal: number
+    allUsers: {[key: string]: OrganisationUser}
+  }> => {
+    let contributorsTotal = 0
+    const output: Contributor[] = []
+    for (const contributor of input) {
+      core.debug(`Filling contributor ${contributor.author.login} data`)
+      contributorsTotal += contributor.total
+      if (allUsers[contributor.author.login]) {
+        core.debug(`Contributor ${contributor.author.login} already added`)
+        allUsers[contributor.author.login].commitsCount += contributor.total
+        continue
+      }
+      core.debug(`Fetch user ${contributor.author.login}`)
+
+      const usersResponse = await octokit.rest.users.getByUsername({
+        username: contributor.author.login
+      })
+      const updatedContributor = {
+        ...contributor,
+        author: {
+          ...contributor.author,
+          ...usersResponse.data
+        }
+      } as Contributor
+      allUsers[contributor.author.login] = {
+        ...updatedContributor.author,
+        commitsCount: contributor.total
+      }
+      output.push(updatedContributor)
+    }
+    return {
+      repoContributors: output.sort((a, b) => (a.total > b.total ? -1 : 1)),
+      repoTotal: contributorsTotal,
+      allUsers
+    }
+  }
+
   const fetchOrgContributors = async (
     org: string
   ): Promise<ReposWithContributors> => {
@@ -82,7 +125,6 @@ const fetcher = (
               repo: item.name
             })
 
-          let repoCommitsCount = 0
           // For each contributor, fetch name
           const repoContributors =
             contributorsResponse.data.length > 0
@@ -92,52 +134,13 @@ const fetcher = (
             `Found ${repoContributors.length} contributors for repository ${item.name}`
           )
 
-          for (let i = 0; i < repoContributors.length; i++) {
-            const contributor = repoContributors[i]
-            core.debug(
-              `Handling contributor ${contributor.author.login} for repository ${item.name}`
-            )
-
-            commitsCount += contributor.total
-            repoCommitsCount += contributor.total
-            if (contributors[contributor.author.login]) {
-              core.debug(
-                `Contributor ${contributor.author.login} already added`
-              )
-              contributors[contributor.author.login].commitsCount +=
-                contributor.total
-              continue
-            }
-
-            core.debug(`Fetch user ${contributor.author.login}`)
-
-            const usersResponse = await octokit.rest.users.getByUsername({
-              username: contributor.author.login
-            })
-            const updatedContributor = {
-              ...contributor,
-              author: {
-                ...contributor.author,
-                ...usersResponse.data
-              }
-            } as Contributor
-            contributors[contributor.author.login] = {
-              ...updatedContributor.author,
-              commitsCount: contributor.total
-            }
-            repoContributors[i] = updatedContributor
-            return {
-              ...item,
-              contributors: contributorsResponse.data,
-              commitsCount: repoCommitsCount
-            }
-          }
+          const repoData = await fillUserData(repoContributors, contributors)
+          commitsCount += repoData.repoTotal
           return {
             ...item,
             // Sort repository contributors by commit count
-            contributors: repoContributors.sort((a, b) =>
-              a.total > b.total ? -1 : 1
-            )
+            contributors: repoData.repoContributors,
+            commitsCount: repoData.repoTotal
           }
         } catch (err) {
           errorHandler(err as Error)
