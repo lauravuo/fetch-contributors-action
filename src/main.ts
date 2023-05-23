@@ -7,29 +7,30 @@ import fetcher from './fetch'
 
 async function run(): Promise<void> {
   try {
-    const authToken = core.getInput('token')
-    if (!authToken) {
-      throw new Error('Token is required')
+    const authToken = core.getInput('token', {required: true})
+    const organisation =
+      core.getInput('organisation') ||
+      (process.env.GITHUB_REPOSITORY &&
+        process.env.GITHUB_REPOSITORY.split('/')[0])
+
+    if (!organisation) {
+      throw new Error('Organisation is required')
     }
 
-    if (!process.env.GITHUB_REPOSITORY) {
-      throw new Error('Repository is required')
-    }
-
-    const [repoOwner] = process.env.GITHUB_REPOSITORY.split('/')
-    core.debug(`Fetch contributors for organisation ${repoOwner}`)
+    core.debug(`Run action for organisation ${organisation}`)
 
     const octokit = getOctokit(authToken)
+
     const dataFetcher = fetcher(octokit)
-    const data = await dataFetcher.fetchOrgContributors(repoOwner)
+
+    const data = await dataFetcher.fetchOrgContributors(organisation)
 
     const markdown = `
+# ${organisation}
 
-# ${repoOwner}
-  
 ## All contributors
 
-| avatar | username | name | count | % of all commits |
+| avatar | username | name | count | of all commits |
 |--------|----------|------|---------|---|
 ${data.contributors
   .map(
@@ -38,7 +39,7 @@ ${data.contributors
         item.login
       }](https://github.com/${item.login}) | ${item.name} | ${
         item.commitsCount
-      } | ${Math.round((item.commitsCount / data.commitsCount) * 100)}`
+      } | ${Math.round((item.commitsCount / data.commitsCount) * 100)}%`
   )
   .join('\n')}
 
@@ -47,9 +48,9 @@ ${data.contributors
 ${data.repos
   .map(
     item =>
-      `### [${item.name}](https://github.com/${repoOwner}/${item.name}) ([${
+      `### [${item.name}](https://github.com/${organisation}/${item.name}) ([${
         item.commitsCount
-      } commits](https://github.com/${repoOwner}/${
+      } commits](https://github.com/${organisation}/${
         item.name
       }/graphs/contributors))\n
 ${item.contributors
@@ -61,10 +62,10 @@ ${item.contributors
       }) (${Math.round((user.total / item.commitsCount) * 100)} %)`
   )
   .join('\n')}
-`
+    `
   )
   .join('\n')}
-`
+    `
 
     const targetPath: string = core.getInput('targetPath')
     fs.writeFileSync(targetPath, markdown)
