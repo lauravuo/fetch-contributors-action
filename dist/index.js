@@ -113,6 +113,7 @@ octokit) => {
                     owner: item.owner.login,
                     repo: item.name
                 });
+                core.debug(`Contributors response ${JSON.stringify(contributorsResponse)}`);
                 // For each contributor, fetch name
                 const repoContributors = contributorsResponse.data.length > 0
                     ? contributorsResponse.data
