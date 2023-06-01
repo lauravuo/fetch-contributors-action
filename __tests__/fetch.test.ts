@@ -202,6 +202,9 @@ const octoKitMock = {
     },
     users: {
       getByUsername: async () => ({data: JSON.parse(usersResponse)})
+    },
+    orgs: {
+      listForUser: async () => ({data: []})
     }
   }
 }
