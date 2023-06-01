@@ -237,7 +237,7 @@ function run() {
 | avatar | username | name | count | of all commits |
 |--------|----------|------|---------|---|
 ${data.contributors
-                .map(item => `| ![](https://avatars.githubusercontent.com/u/${item.id}?s=35&v=4) | [${item.login}](https://github.com/${item.login}) | ${item.name} | ${item.commitsCount} | ${Math.round((item.commitsCount / data.commitsCount) * 100)}%`)
+                .map(item => `| <img src="https://avatars.githubusercontent.com/u/${item.id}?s=35&v=4" alt="${item.login}" width="35px" /> | [${item.login}](https://github.com/${item.login}) | ${item.name} | ${item.commitsCount} | ${Math.round((item.commitsCount / data.commitsCount) * 100)}%`)
                 .join('\n')}
 
 ## Repositories

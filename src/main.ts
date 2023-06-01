@@ -35,7 +35,9 @@ async function run(): Promise<void> {
 ${data.contributors
   .map(
     item =>
-      `| ![](https://avatars.githubusercontent.com/u/${item.id}?s=35&v=4) | [${
+      `| <img src="https://avatars.githubusercontent.com/u/${
+        item.id
+      }?s=35&v=4" alt="${item.login}" width="35px" /> | [${
         item.login
       }](https://github.com/${item.login}) | ${item.name} | ${
         item.commitsCount
