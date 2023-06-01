@@ -27,7 +27,10 @@ const fetcher = (
   // eslint-disable-next-line  @typescript-eslint/no-explicit-any
   octokit: any
 ): {
-  fetchOrgContributors: (org: string) => Promise<ReposWithContributors>
+  fetchOrgContributors: (
+    org: string,
+    onlyOrgMembers: boolean
+  ) => Promise<ReposWithContributors>
 } => {
   const errorHandler = (err: Error): void => {
     core.error(err)
@@ -110,9 +113,36 @@ const fetcher = (
     }
   }
 
+  const filterContributors = async (
+    input: Contributor[],
+    onlyForOrg: string
+  ): Promise<Contributor[]> => {
+    if (!onlyForOrg) {
+      return input
+    }
+    const includedContributors: string[] = []
+    for (const contributor of input) {
+      core.debug(`Fetch user organisation ${contributor.author.login}`)
+      const usersResponse = await octokit.rest.orgs.listForUser({
+        username: contributor.author.login
+      })
+      if (
+        usersResponse.data.find(
+          (org: {login: string}) => org.login === onlyForOrg
+        )
+      ) {
+        includedContributors.push(contributor.author.login)
+      }
+    }
+    return input.filter(contributor =>
+      includedContributors.includes(contributor.author.login)
+    )
+  }
+
   const fetchRepoContributors = async (
     item: RepoWithContributors,
-    contributors: {[key: string]: OrganisationUser}
+    contributors: {[key: string]: OrganisationUser},
+    onlyForOrg: string
   ): Promise<RepoWithContributors> => {
     try {
       core.debug(`Fetch contributors for repository ${item.name}`)
@@ -135,10 +165,12 @@ const fetcher = (
       }
 
       // For each contributor, fetch name
-      const repoContributors =
+      const repoContributors = await filterContributors(
         contributorsResponse.data.length > 0
           ? (contributorsResponse.data as Contributor[])
-          : []
+          : [],
+        onlyForOrg
+      )
       core.debug(
         `Found ${repoContributors.length} contributors for repository ${item.name}`
       )
@@ -157,7 +189,8 @@ const fetcher = (
   }
 
   const fetchOrgContributors = async (
-    org: string
+    org: string,
+    onlyOrgMembers: boolean
   ): Promise<ReposWithContributors> => {
     core.debug(`Fetch contributors for organisation ${org}`)
 
@@ -186,7 +219,8 @@ const fetcher = (
       }
       const repoWithContributors = await fetchRepoContributors(
         item,
-        contributors
+        contributors,
+        onlyOrgMembers ? org : ''
       )
       if (
         repoWithContributors.contributors.length === 0 &&
