@@ -104,7 +104,8 @@ octokit) => {
         const contributors = {};
         const repos = yield fetchOrgRepos(org);
         let commitsCount = 0;
-        const reposWithContributors = yield Promise.all(repos.map((item) => __awaiter(void 0, void 0, void 0, function* () {
+        const reposWithContributors = [];
+        for (const item of repos) {
             try {
                 core.debug(`Fetch contributors for repository ${item.name}`);
                 // Get repository stats
@@ -119,14 +120,14 @@ octokit) => {
                 core.debug(`Found ${repoContributors.length} contributors for repository ${item.name}`);
                 const repoData = yield fillUserData(repoContributors, contributors);
                 commitsCount += repoData.repoTotal;
-                return Object.assign(Object.assign({}, item), { 
+                reposWithContributors.push(Object.assign(Object.assign({}, item), { 
                     // Sort repository contributors by commit count
-                    contributors: repoData.repoContributors, commitsCount: repoData.repoTotal });
+                    contributors: repoData.repoContributors, commitsCount: repoData.repoTotal }));
             }
             catch (err) {
                 errorHandler(err);
             }
-        })));
+        }
         return {
             // Sort organisation contributors by commit count
             contributors: Object.keys(contributors)

@@ -117,46 +117,46 @@ const fetcher = (
 
     let commitsCount = 0
 
-    const reposWithContributors = await Promise.all(
-      repos.map(async item => {
-        try {
-          core.debug(`Fetch contributors for repository ${item.name}`)
+    const reposWithContributors: RepoWithContributors[] = []
+    for (const item of repos) {
+      try {
+        core.debug(`Fetch contributors for repository ${item.name}`)
 
-          // Get repository stats
-          const contributorsResponse =
-            await octokit.rest.repos.getContributorsStats({
-              owner: item.owner.login,
-              repo: item.name
-            })
+        // Get repository stats
+        const contributorsResponse =
+          await octokit.rest.repos.getContributorsStats({
+            owner: item.owner.login,
+            repo: item.name
+          })
 
-          // For each contributor, fetch name
-          const repoContributors =
-            contributorsResponse.data.length > 0
-              ? (contributorsResponse.data as Contributor[])
-              : []
-          core.debug(
-            `Found ${repoContributors.length} contributors for repository ${item.name}`
-          )
+        // For each contributor, fetch name
+        const repoContributors =
+          contributorsResponse.data.length > 0
+            ? (contributorsResponse.data as Contributor[])
+            : []
+        core.debug(
+          `Found ${repoContributors.length} contributors for repository ${item.name}`
+        )
 
-          const repoData = await fillUserData(repoContributors, contributors)
-          commitsCount += repoData.repoTotal
-          return {
-            ...item,
-            // Sort repository contributors by commit count
-            contributors: repoData.repoContributors,
-            commitsCount: repoData.repoTotal
-          }
-        } catch (err) {
-          errorHandler(err as Error)
-        }
-      })
-    )
+        const repoData = await fillUserData(repoContributors, contributors)
+        commitsCount += repoData.repoTotal
+        reposWithContributors.push({
+          ...item,
+          // Sort repository contributors by commit count
+          contributors: repoData.repoContributors,
+          commitsCount: repoData.repoTotal
+        })
+      } catch (err) {
+        errorHandler(err as Error)
+      }
+    }
+
     return {
       // Sort organisation contributors by commit count
       contributors: Object.keys(contributors)
         .map(key => contributors[key])
         .sort((a, b) => (a.commitsCount > b.commitsCount ? -1 : 1)),
-      repos: (reposWithContributors as RepoWithContributors[]).sort((a, b) =>
+      repos: reposWithContributors.sort((a, b) =>
         a.commitsCount > b.commitsCount ? -1 : 1
       ),
       commitsCount
