@@ -48,6 +48,7 @@ octokit) => {
         core.setFailed(err.message);
         process.exit(1);
     };
+    const sleep = (ms) => __awaiter(void 0, void 0, void 0, function* () { return new Promise(resolve => setTimeout(resolve, ms)); });
     const fetchOrgRepos = (org) => __awaiter(void 0, void 0, void 0, function* () {
         core.debug(`Fetch repositories for organisation ${org}`);
         // Fetch organisation repositories
@@ -99,34 +100,56 @@ octokit) => {
             allUsers
         };
     });
+    const fetchRepoContributors = (item, contributors) => __awaiter(void 0, void 0, void 0, function* () {
+        try {
+            core.debug(`Fetch contributors for repository ${item.name}`);
+            // Get repository stats
+            const contributorsResponse = yield octokit.rest.repos.getContributorsStats({
+                owner: item.owner.login,
+                repo: item.name
+            });
+            core.debug(`Contributors response ${JSON.stringify(contributorsResponse)}`);
+            // Stats are processing, try again later
+            if (contributorsResponse.status === 202) {
+                return Object.assign(Object.assign({}, item), { contributors: [], commitsCount: 0, tries: (item.tries || 0) + 1 });
+            }
+            // For each contributor, fetch name
+            const repoContributors = contributorsResponse.data.length > 0
+                ? contributorsResponse.data
+                : [];
+            core.debug(`Found ${repoContributors.length} contributors for repository ${item.name}`);
+            const repoData = yield fillUserData(repoContributors, contributors);
+            return Object.assign(Object.assign({}, item), { 
+                // Sort repository contributors by commit count
+                contributors: repoData.repoContributors, commitsCount: repoData.repoTotal });
+        }
+        catch (err) {
+            errorHandler(err);
+        }
+        return Object.assign(Object.assign({}, item), { contributors: [], commitsCount: 0 });
+    });
     const fetchOrgContributors = (org) => __awaiter(void 0, void 0, void 0, function* () {
         core.debug(`Fetch contributors for organisation ${org}`);
         const contributors = {};
         const repos = yield fetchOrgRepos(org);
         let commitsCount = 0;
+        const reposToFetch = repos.map(repo => (Object.assign(Object.assign({}, repo), { contributors: [], commitsCount: 0, tries: 0 })));
         const reposWithContributors = [];
-        for (const item of repos) {
-            try {
-                core.debug(`Fetch contributors for repository ${item.name}`);
-                // Get repository stats
-                const contributorsResponse = yield octokit.rest.repos.getContributorsStats({
-                    owner: item.owner.login,
-                    repo: item.name
-                });
-                core.debug(`Contributors response ${JSON.stringify(contributorsResponse)}`);
-                // For each contributor, fetch name
-                const repoContributors = contributorsResponse.data.length > 0
-                    ? contributorsResponse.data
-                    : [];
-                core.debug(`Found ${repoContributors.length} contributors for repository ${item.name}`);
-                const repoData = yield fillUserData(repoContributors, contributors);
-                commitsCount += repoData.repoTotal;
-                reposWithContributors.push(Object.assign(Object.assign({}, item), { 
-                    // Sort repository contributors by commit count
-                    contributors: repoData.repoContributors, commitsCount: repoData.repoTotal }));
+        while (reposToFetch.length > 0) {
+            const item = reposToFetch[0];
+            reposToFetch.shift();
+            if (item.tries) {
+                yield sleep(1000);
             }
-            catch (err) {
-                errorHandler(err);
+            const repoWithContributors = yield fetchRepoContributors(item, contributors);
+            if (repoWithContributors.contributors.length === 0 &&
+                repoWithContributors.tries &&
+                repoWithContributors.tries < 5) {
+                reposToFetch.push(repoWithContributors);
+            }
+            else {
+                reposWithContributors.push(repoWithContributors);
+                commitsCount += repoWithContributors.commitsCount;
             }
         }
         return {

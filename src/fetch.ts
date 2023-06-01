@@ -10,6 +10,7 @@ export interface Contributor {
 export interface RepoWithContributors extends Repository {
   contributors: Contributor[]
   commitsCount: number
+  tries?: number
 }
 
 export interface OrganisationUser extends User {
@@ -33,6 +34,9 @@ const fetcher = (
     core.setFailed(err.message)
     process.exit(1)
   }
+
+  const sleep = async (ms: number): Promise<void> =>
+    new Promise(resolve => setTimeout(resolve, ms))
 
   const fetchOrgRepos = async (org: string): Promise<Repository[]> => {
     core.debug(`Fetch repositories for organisation ${org}`)
@@ -106,6 +110,54 @@ const fetcher = (
     }
   }
 
+  const fetchRepoContributors = async (
+    item: RepoWithContributors,
+    contributors: {[key: string]: OrganisationUser}
+  ): Promise<RepoWithContributors> => {
+    try {
+      core.debug(`Fetch contributors for repository ${item.name}`)
+
+      // Get repository stats
+      const contributorsResponse =
+        await octokit.rest.repos.getContributorsStats({
+          owner: item.owner.login,
+          repo: item.name
+        })
+      core.debug(
+        `Contributors response ${JSON.stringify(contributorsResponse)}`
+      )
+      // Stats are processing, try again later
+      if (contributorsResponse.status === 202) {
+        return {
+          ...item,
+          contributors: [],
+          commitsCount: 0,
+          tries: (item.tries || 0) + 1
+        }
+      }
+
+      // For each contributor, fetch name
+      const repoContributors =
+        contributorsResponse.data.length > 0
+          ? (contributorsResponse.data as Contributor[])
+          : []
+      core.debug(
+        `Found ${repoContributors.length} contributors for repository ${item.name}`
+      )
+
+      const repoData = await fillUserData(repoContributors, contributors)
+      return {
+        ...item,
+        // Sort repository contributors by commit count
+        contributors: repoData.repoContributors,
+        commitsCount: repoData.repoTotal
+      }
+    } catch (err) {
+      errorHandler(err as Error)
+    }
+    return {...item, contributors: [], commitsCount: 0}
+  }
+
   const fetchOrgContributors = async (
     org: string
   ): Promise<ReposWithContributors> => {
@@ -117,40 +169,36 @@ const fetcher = (
 
     let commitsCount = 0
 
+    const reposToFetch = repos.map(
+      repo =>
+        ({
+          ...repo,
+          contributors: [],
+          commitsCount: 0,
+          tries: 0
+        } as RepoWithContributors)
+    )
     const reposWithContributors: RepoWithContributors[] = []
-    for (const item of repos) {
-      try {
-        core.debug(`Fetch contributors for repository ${item.name}`)
+    while (reposToFetch.length > 0) {
+      const item = reposToFetch[0]
+      reposToFetch.shift()
 
-        // Get repository stats
-        const contributorsResponse =
-          await octokit.rest.repos.getContributorsStats({
-            owner: item.owner.login,
-            repo: item.name
-          })
-        core.debug(
-          `Contributors response ${JSON.stringify(contributorsResponse)}`
-        )
-
-        // For each contributor, fetch name
-        const repoContributors =
-          contributorsResponse.data.length > 0
-            ? (contributorsResponse.data as Contributor[])
-            : []
-        core.debug(
-          `Found ${repoContributors.length} contributors for repository ${item.name}`
-        )
-
-        const repoData = await fillUserData(repoContributors, contributors)
-        commitsCount += repoData.repoTotal
-        reposWithContributors.push({
-          ...item,
-          // Sort repository contributors by commit count
-          contributors: repoData.repoContributors,
-          commitsCount: repoData.repoTotal
-        })
-      } catch (err) {
-        errorHandler(err as Error)
+      if (item.tries) {
+        await sleep(1000)
+      }
+      const repoWithContributors = await fetchRepoContributors(
+        item,
+        contributors
+      )
+      if (
+        repoWithContributors.contributors.length === 0 &&
+        repoWithContributors.tries &&
+        repoWithContributors.tries < 5
+      ) {
+        reposToFetch.push(repoWithContributors)
+      } else {
+        reposWithContributors.push(repoWithContributors)
+        commitsCount += repoWithContributors.commitsCount
       }
     }
 
