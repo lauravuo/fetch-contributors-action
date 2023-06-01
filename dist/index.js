@@ -108,7 +108,6 @@ octokit) => {
                 owner: item.owner.login,
                 repo: item.name
             });
-            core.debug(`Contributors response ${JSON.stringify(contributorsResponse)}`);
             // Stats are processing, try again later
             if (contributorsResponse.status === 202) {
                 return Object.assign(Object.assign({}, item), { contributors: [], commitsCount: 0, tries: (item.tries || 0) + 1 });
@@ -144,7 +143,7 @@ octokit) => {
             const repoWithContributors = yield fetchRepoContributors(item, contributors);
             if (repoWithContributors.contributors.length === 0 &&
                 repoWithContributors.tries &&
-                repoWithContributors.tries < 5) {
+                repoWithContributors.tries < 10) {
                 reposToFetch.push(repoWithContributors);
             }
             else {

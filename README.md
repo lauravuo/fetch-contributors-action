@@ -30,7 +30,7 @@ Result markdown file path. Default is `./contributors.md`.
 ## Example usage
 
 ```yaml
-uses: lauravuo/fetch-contributors-action@v0.1
+uses: lauravuo/fetch-contributors-action@v0.2
 with:
   token: ${{ secrets.GITHUB_TOKEN }}
 ```
@@ -50,7 +50,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: lauravuo/fetch-contributors-action@main
+      - uses: lauravuo/fetch-contributors-action@v0.2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 ```

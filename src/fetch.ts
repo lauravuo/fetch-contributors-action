@@ -123,9 +123,7 @@ const fetcher = (
           owner: item.owner.login,
           repo: item.name
         })
-      core.debug(
-        `Contributors response ${JSON.stringify(contributorsResponse)}`
-      )
+
       // Stats are processing, try again later
       if (contributorsResponse.status === 202) {
         return {
@@ -193,7 +191,7 @@ const fetcher = (
       if (
         repoWithContributors.contributors.length === 0 &&
         repoWithContributors.tries &&
-        repoWithContributors.tries < 5
+        repoWithContributors.tries < 10
       ) {
         reposToFetch.push(repoWithContributors)
       } else {
