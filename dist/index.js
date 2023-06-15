@@ -54,6 +54,7 @@ octokit) => {
         // Fetch organisation repositories
         let page = 1;
         const repos = [];
+        const forks = [];
         while (page > 0) {
             try {
                 const reposResponse = yield octokit.rest.repos.listForOrg({
@@ -65,6 +66,7 @@ octokit) => {
                 }
                 else {
                     repos.push(...reposResponse.data.filter(item => !item.fork));
+                    forks.push(...reposResponse.data.filter(item => item.fork));
                     page++;
                 }
             }
@@ -72,7 +74,7 @@ octokit) => {
                 errorHandler(err);
             }
         }
-        return repos;
+        return { repos, forks };
     });
     const fillUserData = (input, allUsers) => __awaiter(void 0, void 0, void 0, function* () {
         let contributorsTotal = 0;
@@ -132,9 +134,9 @@ octokit) => {
     const fetchOrgContributors = (org) => __awaiter(void 0, void 0, void 0, function* () {
         core.debug(`Fetch contributors for organisation ${org}`);
         const contributors = {};
-        const repos = yield fetchOrgRepos(org);
+        const res = yield fetchOrgRepos(org);
         let commitsCount = 0;
-        const reposToFetch = repos.map(repo => (Object.assign(Object.assign({}, repo), { contributors: [], commitsCount: 0, tries: 0 })));
+        const reposToFetch = res.repos.map(repo => (Object.assign(Object.assign({}, repo), { contributors: [], commitsCount: 0, tries: 0 })));
         const reposWithContributors = [];
         while (reposToFetch.length > 0) {
             const item = reposToFetch[0];
