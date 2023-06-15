@@ -74,7 +74,7 @@ octokit) => {
         }
         return repos;
     });
-    const fillUserData = (input, allUsers, onlyForOrg) => __awaiter(void 0, void 0, void 0, function* () {
+    const fillUserData = (input, allUsers) => __awaiter(void 0, void 0, void 0, function* () {
         let contributorsTotal = 0;
         const output = [];
         for (const contributor of input) {
@@ -83,28 +83,18 @@ octokit) => {
             if (existingUser) {
                 core.debug(`Contributor ${contributor.author.login} already added`);
                 existingUser.commitsCount += contributor.total;
-                if (!onlyForOrg ||
-                    existingUser.organizations.find(org => org.login === onlyForOrg)) {
-                    contributorsTotal += contributor.total;
-                    output.push(Object.assign(Object.assign({}, contributor), { author: existingUser }));
-                }
+                contributorsTotal += contributor.total;
+                output.push(Object.assign(Object.assign({}, contributor), { author: existingUser }));
                 continue;
             }
             core.debug(`Fetch user ${contributor.author.login}`);
             const usersResponse = yield octokit.rest.users.getByUsername({
                 username: contributor.author.login
             });
-            core.debug(`Fetch user organisation ${contributor.author.login}`);
-            const userOrgsResponse = yield octokit.rest.orgs.listForUser({
-                username: contributor.author.login
-            });
             const updatedContributor = Object.assign(Object.assign({}, contributor), { author: Object.assign(Object.assign({}, contributor.author), usersResponse.data) });
-            allUsers[contributor.author.login] = Object.assign(Object.assign({}, updatedContributor.author), { commitsCount: contributor.total, organizations: userOrgsResponse.data });
-            if (!onlyForOrg ||
-                allUsers[contributor.author.login].organizations.find(org => org.login === onlyForOrg)) {
-                contributorsTotal += contributor.total;
-                output.push(updatedContributor);
-            }
+            allUsers[contributor.author.login] = Object.assign(Object.assign({}, updatedContributor.author), { commitsCount: contributor.total });
+            contributorsTotal += contributor.total;
+            output.push(updatedContributor);
         }
         return {
             repoContributors: output.sort((a, b) => (a.total > b.total ? -1 : 1)),
@@ -112,7 +102,7 @@ octokit) => {
             allUsers
         };
     });
-    const fetchRepoContributors = (item, contributors, onlyForOrg) => __awaiter(void 0, void 0, void 0, function* () {
+    const fetchRepoContributors = (item, contributors) => __awaiter(void 0, void 0, void 0, function* () {
         try {
             core.debug(`Fetch contributors for repository ${item.name}`);
             // Get repository stats
@@ -129,7 +119,7 @@ octokit) => {
                 ? contributorsResponse.data
                 : [];
             core.debug(`Found ${repoContributors.length} contributors for repository ${item.name}`);
-            const repoData = yield fillUserData(repoContributors, contributors, onlyForOrg);
+            const repoData = yield fillUserData(repoContributors, contributors);
             return Object.assign(Object.assign({}, item), { 
                 // Sort repository contributors by commit count
                 contributors: repoData.repoContributors, commitsCount: repoData.repoTotal });
@@ -139,7 +129,7 @@ octokit) => {
         }
         return Object.assign(Object.assign({}, item), { contributors: [], commitsCount: 0 });
     });
-    const fetchOrgContributors = (org, onlyOrgMembers) => __awaiter(void 0, void 0, void 0, function* () {
+    const fetchOrgContributors = (org) => __awaiter(void 0, void 0, void 0, function* () {
         core.debug(`Fetch contributors for organisation ${org}`);
         const contributors = {};
         const repos = yield fetchOrgRepos(org);
@@ -152,7 +142,7 @@ octokit) => {
             if (item.tries) {
                 yield sleep(1000);
             }
-            const repoWithContributors = yield fetchRepoContributors(item, contributors, onlyOrgMembers ? org : '');
+            const repoWithContributors = yield fetchRepoContributors(item, contributors);
             if (repoWithContributors.contributors.length === 0 &&
                 repoWithContributors.tries &&
                 repoWithContributors.tries < 10) {
@@ -240,8 +230,7 @@ function run() {
             core.debug(`Run action for organisation ${organisation}`);
             const octokit = (0, github_1.getOctokit)(authToken);
             const dataFetcher = (0, fetch_1.default)(octokit);
-            const onlyOrgMembers = core.getInput('onlyOrganisationMembers') === 'true';
-            const data = yield dataFetcher.fetchOrgContributors(organisation, onlyOrgMembers);
+            const data = yield dataFetcher.fetchOrgContributors(organisation);
             const markdown = `
 # ${organisation}
 

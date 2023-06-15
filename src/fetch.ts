@@ -15,7 +15,6 @@ export interface RepoWithContributors extends Repository {
 
 export interface OrganisationUser extends User {
   commitsCount: number
-  organizations: {login: string}[]
 }
 
 export interface ReposWithContributors {
@@ -28,10 +27,7 @@ const fetcher = (
   // eslint-disable-next-line  @typescript-eslint/no-explicit-any
   octokit: any
 ): {
-  fetchOrgContributors: (
-    org: string,
-    onlyOrgMembers: boolean
-  ) => Promise<ReposWithContributors>
+  fetchOrgContributors: (org: string) => Promise<ReposWithContributors>
 } => {
   const errorHandler = (err: Error): void => {
     core.error(err)
@@ -69,8 +65,7 @@ const fetcher = (
 
   const fillUserData = async (
     input: Contributor[],
-    allUsers: {[key: string]: OrganisationUser},
-    onlyForOrg: string
+    allUsers: {[key: string]: OrganisationUser}
   ): Promise<{
     repoContributors: Contributor[]
     repoTotal: number
@@ -84,25 +79,16 @@ const fetcher = (
       if (existingUser) {
         core.debug(`Contributor ${contributor.author.login} already added`)
         existingUser.commitsCount += contributor.total
-        if (
-          !onlyForOrg ||
-          existingUser.organizations.find(org => org.login === onlyForOrg)
-        ) {
-          contributorsTotal += contributor.total
-          output.push({
-            ...contributor,
-            author: existingUser
-          })
-        }
+        contributorsTotal += contributor.total
+        output.push({
+          ...contributor,
+          author: existingUser
+        })
         continue
       }
 
       core.debug(`Fetch user ${contributor.author.login}`)
       const usersResponse = await octokit.rest.users.getByUsername({
-        username: contributor.author.login
-      })
-      core.debug(`Fetch user organisation ${contributor.author.login}`)
-      const userOrgsResponse = await octokit.rest.orgs.listForUser({
         username: contributor.author.login
       })
 
@@ -115,18 +101,10 @@ const fetcher = (
       } as Contributor
       allUsers[contributor.author.login] = {
         ...updatedContributor.author,
-        commitsCount: contributor.total,
-        organizations: userOrgsResponse.data
+        commitsCount: contributor.total
       }
-      if (
-        !onlyForOrg ||
-        allUsers[contributor.author.login].organizations.find(
-          org => org.login === onlyForOrg
-        )
-      ) {
-        contributorsTotal += contributor.total
-        output.push(updatedContributor)
-      }
+      contributorsTotal += contributor.total
+      output.push(updatedContributor)
     }
     return {
       repoContributors: output.sort((a, b) => (a.total > b.total ? -1 : 1)),
@@ -137,8 +115,7 @@ const fetcher = (
 
   const fetchRepoContributors = async (
     item: RepoWithContributors,
-    contributors: {[key: string]: OrganisationUser},
-    onlyForOrg: string
+    contributors: {[key: string]: OrganisationUser}
   ): Promise<RepoWithContributors> => {
     try {
       core.debug(`Fetch contributors for repository ${item.name}`)
@@ -169,11 +146,7 @@ const fetcher = (
         `Found ${repoContributors.length} contributors for repository ${item.name}`
       )
 
-      const repoData = await fillUserData(
-        repoContributors,
-        contributors,
-        onlyForOrg
-      )
+      const repoData = await fillUserData(repoContributors, contributors)
       return {
         ...item,
         // Sort repository contributors by commit count
@@ -187,8 +160,7 @@ const fetcher = (
   }
 
   const fetchOrgContributors = async (
-    org: string,
-    onlyOrgMembers: boolean
+    org: string
   ): Promise<ReposWithContributors> => {
     core.debug(`Fetch contributors for organisation ${org}`)
 
@@ -217,8 +189,7 @@ const fetcher = (
       }
       const repoWithContributors = await fetchRepoContributors(
         item,
-        contributors,
-        onlyOrgMembers ? org : ''
+        contributors
       )
       if (
         repoWithContributors.contributors.length === 0 &&
