@@ -8,10 +8,6 @@ inputs:
   organisation:
     required: false
     description: 'Target organisation'
-  onlyOrganisationMembers:
-    required: false
-    description: 'Include only organisation members'
-    default: 'false'
   targetPath:
     required: false
     description: 'Target markdown file path'

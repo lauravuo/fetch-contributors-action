@@ -22,12 +22,8 @@ async function run(): Promise<void> {
     const octokit = getOctokit(authToken)
 
     const dataFetcher = fetcher(octokit)
-    const onlyOrgMembers = core.getInput('onlyOrganisationMembers') === 'true'
 
-    const data = await dataFetcher.fetchOrgContributors(
-      organisation,
-      onlyOrgMembers
-    )
+    const data = await dataFetcher.fetchOrgContributors(organisation)
 
     const markdown = `
 # ${organisation}
