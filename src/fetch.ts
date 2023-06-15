@@ -53,7 +53,9 @@ const fetcher = (
         if (!reposResponse.data.length) {
           page = 0
         } else {
-          repos.push(...(reposResponse.data as Repository[]))
+          repos.push(
+            ...(reposResponse.data as Repository[]).filter(item => !item.fork)
+          )
           page++
         }
       } catch (err) {

@@ -64,7 +64,7 @@ octokit) => {
                     page = 0;
                 }
                 else {
-                    repos.push(...reposResponse.data);
+                    repos.push(...reposResponse.data.filter(item => !item.fork));
                     page++;
                 }
             }
