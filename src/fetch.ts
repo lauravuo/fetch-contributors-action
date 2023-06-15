@@ -38,12 +38,15 @@ const fetcher = (
   const sleep = async (ms: number): Promise<void> =>
     new Promise(resolve => setTimeout(resolve, ms))
 
-  const fetchOrgRepos = async (org: string): Promise<Repository[]> => {
+  const fetchOrgRepos = async (
+    org: string
+  ): Promise<{repos: Repository[]; forks: Repository[]}> => {
     core.debug(`Fetch repositories for organisation ${org}`)
 
     // Fetch organisation repositories
     let page = 1
     const repos: Repository[] = []
+    const forks: Repository[] = []
     while (page > 0) {
       try {
         const reposResponse = await octokit.rest.repos.listForOrg({
@@ -53,14 +56,19 @@ const fetcher = (
         if (!reposResponse.data.length) {
           page = 0
         } else {
-          repos.push(...(reposResponse.data as Repository[]))
+          repos.push(
+            ...(reposResponse.data as Repository[]).filter(item => !item.fork)
+          )
+          forks.push(
+            ...(reposResponse.data as Repository[]).filter(item => item.fork)
+          )
           page++
         }
       } catch (err) {
         errorHandler(err as Error)
       }
     }
-    return repos
+    return {repos, forks}
   }
 
   const fillUserData = async (
@@ -166,11 +174,11 @@ const fetcher = (
 
     const contributors: {[key: string]: OrganisationUser} = {}
 
-    const repos = await fetchOrgRepos(org)
+    const res = await fetchOrgRepos(org)
 
     let commitsCount = 0
 
-    const reposToFetch = repos.map(
+    const reposToFetch = res.repos.map(
       repo =>
         ({
           ...repo,
