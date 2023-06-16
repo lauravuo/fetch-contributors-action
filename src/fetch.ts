@@ -1,10 +1,10 @@
 import * as core from '@actions/core'
-import type {Repository, User} from '@octokit/webhooks-types'
+import type { Repository, User } from '@octokit/webhooks-types'
 
 export interface Contributor {
   author: User
   total: number
-  weeks: {w: number; a: number; d: number; c: number}[]
+  weeks: { w: number; a: number; d: number; c: number }[]
 }
 
 export interface RepoWithContributors extends Repository {
@@ -43,7 +43,7 @@ const fetcher = (
 
   const fetchOrgRepos = async (
     org: string
-  ): Promise<{repos: Repository[]; forks: Repository[]}> => {
+  ): Promise<{ repos: Repository[]; forks: Repository[] }> => {
     core.debug(`Fetch repositories for organisation ${org}`)
 
     // Fetch organisation repositories
@@ -71,16 +71,16 @@ const fetcher = (
         errorHandler(err as Error)
       }
     }
-    return {repos, forks}
+    return { repos, forks }
   }
 
   const fillUserData = async (
     input: Contributor[],
-    allUsers: {[key: string]: OrganisationUser}
+    allUsers: { [key: string]: OrganisationUser }
   ): Promise<{
     repoContributors: Contributor[]
     repoTotal: number
-    allUsers: {[key: string]: OrganisationUser}
+    allUsers: { [key: string]: OrganisationUser }
   }> => {
     let contributorsTotal = 0
     const output: Contributor[] = []
@@ -126,7 +126,7 @@ const fetcher = (
 
   const fetchRepoContributors = async (
     item: RepoWithContributors,
-    contributors: {[key: string]: OrganisationUser},
+    contributors: { [key: string]: OrganisationUser },
     filteredUsers: string[]
   ): Promise<RepoWithContributors> => {
     try {
@@ -170,7 +170,7 @@ const fetcher = (
         }
       }
 
-      const repoData = await fillUserData(repoContributors, contributors)
+      const repoData = await fillUserData(filteredRepoContributors, contributors)
       return {
         ...item,
         // Sort repository contributors by commit count
@@ -180,7 +180,7 @@ const fetcher = (
     } catch (err) {
       errorHandler(err as Error)
     }
-    return {...item, contributors: [], commitsCount: 0}
+    return { ...item, contributors: [], commitsCount: 0 }
   }
 
   const fetchOrgContributors = async (
@@ -189,7 +189,7 @@ const fetcher = (
   ): Promise<ReposWithContributors> => {
     core.debug(`Fetch contributors for organisation ${org}`)
 
-    const contributors: {[key: string]: OrganisationUser} = {}
+    const contributors: { [key: string]: OrganisationUser } = {}
 
     const res = await fetchOrgRepos(org)
 
@@ -197,12 +197,12 @@ const fetcher = (
 
     const reposToFetch = res.repos.map(
       repo =>
-        ({
-          ...repo,
-          contributors: [],
-          commitsCount: 0,
-          tries: 0
-        } as RepoWithContributors)
+      ({
+        ...repo,
+        contributors: [],
+        commitsCount: 0,
+        tries: 0
+      } as RepoWithContributors)
     )
     const reposWithContributors: RepoWithContributors[] = []
     while (reposToFetch.length > 0) {
