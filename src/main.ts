@@ -19,11 +19,18 @@ async function run(): Promise<void> {
 
     core.debug(`Run action for organisation ${organisation}`)
 
+    const filteredUsers = core.getInput('filterUsersOut')
+      ? core.getInput('filterUsersOut').split(',')
+      : []
+
     const octokit = getOctokit(authToken)
 
     const dataFetcher = fetcher(octokit)
 
-    const data = await dataFetcher.fetchOrgContributors(organisation)
+    const data = await dataFetcher.fetchOrgContributors(
+      organisation,
+      filteredUsers
+    )
 
     const markdown = `
 # ${organisation}

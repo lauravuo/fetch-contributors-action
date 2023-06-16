@@ -27,7 +27,10 @@ const fetcher = (
   // eslint-disable-next-line  @typescript-eslint/no-explicit-any
   octokit: any
 ): {
-  fetchOrgContributors: (org: string) => Promise<ReposWithContributors>
+  fetchOrgContributors: (
+    org: string,
+    filteredUsers: string[]
+  ) => Promise<ReposWithContributors>
 } => {
   const errorHandler = (err: Error): void => {
     core.error(err)
@@ -123,7 +126,8 @@ const fetcher = (
 
   const fetchRepoContributors = async (
     item: RepoWithContributors,
-    contributors: {[key: string]: OrganisationUser}
+    contributors: {[key: string]: OrganisationUser},
+    filteredUsers: string[]
   ): Promise<RepoWithContributors> => {
     try {
       core.debug(`Fetch contributors for repository ${item.name}`)
@@ -154,12 +158,24 @@ const fetcher = (
         `Found ${repoContributors.length} contributors for repository ${item.name}`
       )
 
+      let filteredCommitCount = 0
+      const filteredRepoContributors: Contributor[] = []
+      for (const contributor of repoContributors) {
+        if (
+          filteredUsers.find(userName => contributor.author.login === userName)
+        ) {
+          filteredCommitCount += contributor.total
+        } else {
+          filteredRepoContributors.push(contributor)
+        }
+      }
+
       const repoData = await fillUserData(repoContributors, contributors)
       return {
         ...item,
         // Sort repository contributors by commit count
-        contributors: repoData.repoContributors,
-        commitsCount: repoData.repoTotal
+        contributors: filteredRepoContributors,
+        commitsCount: repoData.repoTotal - filteredCommitCount
       }
     } catch (err) {
       errorHandler(err as Error)
@@ -168,7 +184,8 @@ const fetcher = (
   }
 
   const fetchOrgContributors = async (
-    org: string
+    org: string,
+    filteredUsers: string[]
   ): Promise<ReposWithContributors> => {
     core.debug(`Fetch contributors for organisation ${org}`)
 
@@ -197,7 +214,8 @@ const fetcher = (
       }
       const repoWithContributors = await fetchRepoContributors(
         item,
-        contributors
+        contributors,
+        filteredUsers
       )
       if (
         repoWithContributors.contributors.length === 0 &&

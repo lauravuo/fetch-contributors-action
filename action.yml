@@ -14,8 +14,11 @@ inputs:
     default: './contributors.md'
   commitTarget:
     required: false
-    description: 'Save and commit file to repository.'
+    description: 'Save and commit file to repository'
     default: 'true'
+  filterUsersOut:
+    required: false
+    description: 'Commaseparated list of users to filter out'
 runs:
   using: 'node16'
   main: 'dist/index.js'
