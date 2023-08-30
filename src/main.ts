@@ -64,6 +64,7 @@ ${data.repos
       }/graphs/contributors))\n
 ${item.contributors
   .slice(0, 15)
+  .sort((a, b) => (a.total > b.total ? -1 : 1))
   .map(
     user =>
       `* [${user.author.login}](https://github.com/${

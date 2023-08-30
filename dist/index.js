@@ -99,7 +99,7 @@ octokit) => {
             output.push(updatedContributor);
         }
         return {
-            repoContributors: output.sort((a, b) => (a.total < b.total ? -1 : 1)),
+            repoContributors: output.sort((a, b) => (a.total > b.total ? -1 : 1)),
             repoTotal: contributorsTotal,
             allUsers
         };
@@ -259,6 +259,7 @@ ${data.repos
                 .map(item => `### [${item.name}](https://github.com/${organisation}/${item.name}) ([${item.commitsCount} commits](https://github.com/${organisation}/${item.name}/graphs/contributors))\n
 ${item.contributors
                 .slice(0, 15)
+                .sort((a, b) => (a.total > b.total ? -1 : 1))
                 .map(user => `* [${user.author.login}](https://github.com/${user.author.login}) (${Math.round((user.total / item.commitsCount) * 100)} %)`)
                 .join('\n')}
     `)
