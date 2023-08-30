@@ -236,6 +236,10 @@ const fetcher = (
       // Sort organisation contributors by commit count
       contributors: Object.keys(contributors)
         .map(key => contributors[key])
+        .filter(
+          contributor =>
+            !filteredUsers.find(userName => contributor.login === userName)
+        )
         .sort((a, b) => (a.commitsCount > b.commitsCount ? -1 : 1)),
       repos: reposWithContributors.sort((a, b) =>
         a.commitsCount > b.commitsCount ? -1 : 1
