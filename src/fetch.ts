@@ -205,7 +205,7 @@ const fetcher = (
           contributors: [],
           commitsCount: 0,
           tries: 0
-        } as RepoWithContributors)
+        }) as RepoWithContributors
     )
     const reposWithContributors: RepoWithContributors[] = []
     while (reposToFetch.length > 0) {
