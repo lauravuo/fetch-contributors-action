@@ -171,7 +171,12 @@ const fetcher = (
       return {
         ...item,
         // Sort repository contributors by commit count
-        contributors: repoContributors,
+        contributors: repoContributors.filter(
+          contributor =>
+            !filteredUsers.find(
+              userName => contributor.author.login === userName
+            )
+        ),
         commitsCount: repoData.repoTotal - filteredCommitCount
       }
     } catch (err) {
