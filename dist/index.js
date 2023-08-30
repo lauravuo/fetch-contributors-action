@@ -128,7 +128,7 @@ octokit) => {
             const repoData = yield fillUserData(repoContributors, contributors);
             return Object.assign(Object.assign({}, item), { 
                 // Sort repository contributors by commit count
-                contributors: repoContributors, commitsCount: repoData.repoTotal - filteredCommitCount });
+                contributors: repoContributors.filter(contributor => !filteredUsers.find(userName => contributor.author.login === userName)), commitsCount: repoData.repoTotal - filteredCommitCount });
         }
         catch (err) {
             errorHandler(err);
