@@ -158,26 +158,20 @@ const fetcher = (
         `Found ${repoContributors.length} contributors for repository ${item.name}`
       )
 
-      let filteredCommitCount = 0
-      const filteredRepoContributors: Contributor[] = []
-      for (const contributor of repoContributors) {
-        if (
+      // Exclude filtered users commit count
+      const filteredCommitCount = repoContributors.reduce(
+        (result, contributor) =>
           filteredUsers.find(userName => contributor.author.login === userName)
-        ) {
-          filteredCommitCount += contributor.total
-        } else {
-          filteredRepoContributors.push(contributor)
-        }
-      }
-
-      const repoData = await fillUserData(
-        filteredRepoContributors,
-        contributors
+            ? result + contributor.total
+            : result,
+        0
       )
+
+      const repoData = await fillUserData(repoContributors, contributors)
       return {
         ...item,
         // Sort repository contributors by commit count
-        contributors: filteredRepoContributors,
+        contributors: repoContributors,
         commitsCount: repoData.repoTotal - filteredCommitCount
       }
     } catch (err) {
@@ -198,6 +192,7 @@ const fetcher = (
 
     let commitsCount = 0
 
+    // Exclude forks for now
     const reposToFetch = res.repos.map(
       repo =>
         ({

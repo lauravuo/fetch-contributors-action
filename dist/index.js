@@ -121,20 +121,14 @@ octokit) => {
                 ? contributorsResponse.data
                 : [];
             core.debug(`Found ${repoContributors.length} contributors for repository ${item.name}`);
-            let filteredCommitCount = 0;
-            const filteredRepoContributors = [];
-            for (const contributor of repoContributors) {
-                if (filteredUsers.find(userName => contributor.author.login === userName)) {
-                    filteredCommitCount += contributor.total;
-                }
-                else {
-                    filteredRepoContributors.push(contributor);
-                }
-            }
-            const repoData = yield fillUserData(filteredRepoContributors, contributors);
+            // Exclude filtered users commit count
+            const filteredCommitCount = repoContributors.reduce((result, contributor) => filteredUsers.find(userName => contributor.author.login === userName)
+                ? result + contributor.total
+                : result, 0);
+            const repoData = yield fillUserData(repoContributors, contributors);
             return Object.assign(Object.assign({}, item), { 
                 // Sort repository contributors by commit count
-                contributors: filteredRepoContributors, commitsCount: repoData.repoTotal - filteredCommitCount });
+                contributors: repoContributors, commitsCount: repoData.repoTotal - filteredCommitCount });
         }
         catch (err) {
             errorHandler(err);
@@ -146,6 +140,7 @@ octokit) => {
         const contributors = {};
         const res = yield fetchOrgRepos(org);
         let commitsCount = 0;
+        // Exclude forks for now
         const reposToFetch = res.repos.map(repo => (Object.assign(Object.assign({}, repo), { contributors: [], commitsCount: 0, tries: 0 })));
         const reposWithContributors = [];
         while (reposToFetch.length > 0) {
