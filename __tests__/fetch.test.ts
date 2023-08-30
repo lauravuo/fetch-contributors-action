@@ -212,7 +212,6 @@ const octoKitMock = {
 test('fetch org contributors', async () => {
   const dataFetcher = fetcher(octoKitMock)
   const res = await dataFetcher.fetchOrgContributors('octocat', [])
-  console.log(res)
   expect(res.repos).toHaveLength(1)
   expect(res.repos[0].name).toEqual('Hello-World')
   expect(res.repos[0].contributors[0].author.login).toEqual('octocat')
