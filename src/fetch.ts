@@ -118,7 +118,7 @@ const fetcher = (
       output.push(updatedContributor)
     }
     return {
-      repoContributors: output.sort((a, b) => (a.total > b.total ? -1 : 1)),
+      repoContributors: output.sort((a, b) => (a.total < b.total ? -1 : 1)),
       repoTotal: contributorsTotal,
       allUsers
     }
